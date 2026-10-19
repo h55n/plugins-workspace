@@ -111,7 +111,9 @@ jobs:
         if: contains(matrix.platform.target, 'unknown-linux')
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev
+          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev dbus
+          # the deep-link tests drive the real XDG tools
+          sudo apt-get install -y xdg-utils desktop-file-utils
 
       - uses: dtolnay/rust-toolchain@1.90
         with:
@@ -174,6 +176,12 @@ jobs:
             # Only on the platforms we actually test on, since cargo skips doc tests when cross compiling.
             elif [ "$COMMAND" = test ] && ! $RUNNER test --doc --package "$package" --target "$TARGET" "${features[@]}"; then
               failed+=("$package (doc tests)")
+            # The D-Bus tests are ignored by default because they need their own session bus, and
+            # `dbus_errors` is compiled out with `--all-features` (the `semver` feature changes the
+            # bus name). `instance_lock` runs with the other tests on Windows and macOS.
+            elif [ "$package" = tauri-plugin-single-instance ] && [ "$COMMAND" = test ] && [[ "$TARGET" == *-linux-* ]] \
+              && ! dbus-run-session -- $RUNNER test --package "$package" --target "$TARGET" --test dbus_errors --test instance_lock -- --ignored; then
+              failed+=("$package (D-Bus tests)")
             fi
             echo "::endgroup::"
           done
