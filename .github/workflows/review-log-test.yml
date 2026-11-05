@@ -5,6 +5,9 @@
 name: Review log tests
 
 on:
+  push:
+    branches:
+      - review/log-timestamp-cache-nov5
   workflow_dispatch:
 
 env:
